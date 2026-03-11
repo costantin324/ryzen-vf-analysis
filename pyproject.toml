@@ -10,6 +10,7 @@ dependencies = [
     "numpy>=2.4.3",
     "pandas>=3.0.1",
     "polars>=1.38.1",
+    "pyarrow>=23.0.1",
     "python-dotenv>=1.2.2",
     "seaborn>=0.13.2",
     "statsmodels>=0.14.6",
