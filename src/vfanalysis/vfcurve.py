@@ -47,7 +47,8 @@ def extract_vf_curve(
         .quantile(quantile)
         .reset_index(name=freq_col)
     )
-    vf["vid_mid"] = vf["vid_bin"].apply(lambda interval: interval.mid)
+
+    vf["vid_mid"] = vf["vid_bin"].apply(lambda interval: interval.mid).astype(float)
 
     return vf[["vid_mid", freq_col]].dropna().reset_index(drop=True)
 
