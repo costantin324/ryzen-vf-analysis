@@ -80,6 +80,9 @@ def build_core_dataframe(df: pd.DataFrame, core_map: dict) -> pd.DataFrame:
             "ppt": ppt,
             "cpu_temp": cpu_temp
         })
+        
+        core_df["eff_ratio"] = core_df["eff_clock"] / core_df["clock"]
+
 
         core_dfs.append(core_df)
 
