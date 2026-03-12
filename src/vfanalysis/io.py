@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -145,6 +146,13 @@ def _get_first_present(df: pd.DataFrame, candidates: list[str]) -> pd.Series | N
     return None
 
 
+def _get_first_matching(df: pd.DataFrame, needle: str) -> pd.Series | None:
+    for column in df.columns:
+        if needle in column:
+            return df[column]
+    return None
+
+
 def build_core_dataframe(
     df: pd.DataFrame,
     core_map: dict[int, dict[str, Any]] | None = None,
@@ -154,7 +162,7 @@ def build_core_dataframe(
     map_to_use = core_map if core_map is not None else detect_core_columns(df)
 
     ppt = _get_first_present(df, ["CPU PPT [W]", "CPU PPT"])
-    cpu_temp = _get_first_present(df, ["CPU (Tctl/Tdie) [°C]", "CPU (Tctl/Tdie) [Â°C]"])
+    cpu_temp = _get_first_matching(df, "CPU (Tctl/Tdie)")
 
     core_frames: list[pd.DataFrame] = []
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+from contextlib import suppress
 from dataclasses import asdict, dataclass
-from typing import Callable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -115,11 +116,16 @@ def fit_multivariate_regression(
     model.fit(x, y)
     y_hat = model.predict(x)
 
+    coefficients = {
+        name: float(value)
+        for name, value in zip(predictors, model.coef_, strict=True)
+    }
+
     return _regression_result_from_predictions(
         model_name="multivariate_linear",
         target=target,
         predictors=list(predictors),
-        coefficients={name: float(value) for name, value in zip(predictors, model.coef_, strict=True)},
+        coefficients=coefficients,
         intercept=float(model.intercept_),
         y=y,
         y_hat=y_hat,
@@ -220,11 +226,9 @@ def fit_sklearn_exploratory_regressions(
 ) -> pd.DataFrame:
     """Run the notebook's sklearn exploratory regressions and return diagnostics."""
 
-    results = [
-        fit_linear_regression(df, predictor="vid", target="clock", core=core),
-    ]
+    results = [fit_linear_regression(df, predictor="vid", target="clock", core=core)]
 
-    try:
+    with suppress(ValueError):
         results.append(
             fit_multivariate_regression(
                 df,
@@ -233,8 +237,6 @@ def fit_sklearn_exploratory_regressions(
                 core=core,
             )
         )
-    except ValueError:
-        pass
 
     return pd.DataFrame([asdict(result) for result in results])
 

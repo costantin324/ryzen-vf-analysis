@@ -7,7 +7,6 @@ import pandas as pd
 
 from vfanalysis.ridge import compute_power_clock_ridge
 
-
 _MIN_SLOPE_POINTS = 10
 
 
@@ -82,6 +81,9 @@ def core_summary(df: pd.DataFrame) -> pd.DataFrame:
 
     for core in sorted(df["core"].dropna().unique()):
         core_df = df[df["core"] == core]
+        median_temp = float("nan")
+        if "temp" in core_df:
+            median_temp = float(core_df["temp"].median())
 
         rows.append(
             {
@@ -95,7 +97,7 @@ def core_summary(df: pd.DataFrame) -> pd.DataFrame:
                 "max_clock": float(core_df["clock"].max()),
                 "max_eff_clock": float(core_df["eff_clock"].max()),
                 "median_power": float(core_df["power"].median()),
-                "median_temp": float(core_df["temp"].median()) if "temp" in core_df else float("nan"),
+                "median_temp": median_temp,
             }
         )
 

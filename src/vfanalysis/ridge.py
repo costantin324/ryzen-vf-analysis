@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 import pandas as pd
@@ -82,11 +82,16 @@ def fit_ridge_regression(
     y_hat = model.predict(x)
     residuals = y - y_hat
 
+    coefficients = {
+        name: float(value)
+        for name, value in zip(predictors, model.coef_, strict=True)
+    }
+
     return RidgeRegressionResult(
         predictors=tuple(predictors),
         target=target,
         alpha=alpha,
-        coefficients={name: float(value) for name, value in zip(predictors, model.coef_, strict=True)},
+        coefficients=coefficients,
         intercept=float(model.intercept_),
         r2=float(model.score(x, y)),
         residual_std=float(residuals.std(ddof=1)),
