@@ -1,59 +1,127 @@
-"""Aggregate/statistical metrics for Ryzen V/F telemetry analysis."""
+"""Aggregate and statistical metrics for Ryzen V/F telemetry."""
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 
+from vfanalysis._shared import sorted_core_ids, subset_core
 from vfanalysis.ridge import compute_power_clock_ridge
 
 _MIN_SLOPE_POINTS = 10
 
 
-def _subset_core(df: pd.DataFrame, core: int | None) -> pd.DataFrame:
-    return df if core is None else df[df["core"] == core]
-
-
 def _median_ratio(df: pd.DataFrame, numerator: str, denominator: str) -> float:
+    """Compute the median of a ratio after zero-safe division.
+
+    Args:
+        df: Input dataframe.
+        numerator: Numerator column name.
+        denominator: Denominator column name.
+
+    Returns:
+        The median ratio as a float.
+
+    Assumptions:
+        Both columns are numeric and aligned row-wise.
+    """
+
     values = df[numerator] / df[denominator].replace(0, np.nan)
     return float(values.median())
 
 
 def dv_df_slope(df: pd.DataFrame, core: int | None = None) -> float:
-    """Estimate dV/dF slope via linear fit ``vid = a + b * clock``."""
+    """Estimate the linear ``dV/dF`` slope for one core or the full frame.
 
-    subset = _subset_core(df, core).dropna(subset=["clock", "vid"])
+    Args:
+        df: Telemetry dataframe containing ``clock`` and ``vid``.
+        core: Optional core identifier to isolate before fitting.
+
+    Returns:
+        The slope from ``vid = a + b * clock`` or ``NaN`` when there are too
+        few valid points.
+
+    Assumptions:
+        ``clock`` and ``vid`` are numeric and approximately linear over the
+        selected operating region.
+    """
+
+    subset = subset_core(df, core).dropna(subset=["clock", "vid"])
     if len(subset) < _MIN_SLOPE_POINTS:
         return float("nan")
     return float(np.polyfit(subset["clock"], subset["vid"], deg=1)[0])
 
 
 def clock_per_power(df: pd.DataFrame, core: int | None = None) -> float:
-    """Median frequency-per-watt efficiency metric."""
+    """Compute the median clock-per-power efficiency metric.
 
-    subset = _subset_core(df, core).dropna(subset=["clock", "power"])
+    Args:
+        df: Telemetry dataframe containing ``clock`` and ``power``.
+        core: Optional core identifier to isolate before aggregation.
+
+    Returns:
+        The median ``clock / power`` ratio.
+
+    Assumptions:
+        ``power`` is positive for rows of interest.
+    """
+
+    subset = subset_core(df, core).dropna(subset=["clock", "power"])
     return _median_ratio(subset, "clock", "power")
 
 
 def silicon_efficiency(df: pd.DataFrame, core: int | None = None) -> float:
-    """Median ``clock / vid^2`` efficiency proxy used in the exploratory notebook."""
+    """Compute the notebook's ``clock / vid^2`` silicon-efficiency proxy.
 
-    subset = _subset_core(df, core).dropna(subset=["clock", "vid"])
+    Args:
+        df: Telemetry dataframe containing ``clock`` and ``vid``.
+        core: Optional core identifier to isolate before aggregation.
+
+    Returns:
+        The median silicon-efficiency proxy.
+
+    Assumptions:
+        ``vid`` is non-zero for the rows contributing to the metric.
+    """
+
+    subset = subset_core(df, core).dropna(subset=["clock", "vid"])
     values = subset["clock"] / (subset["vid"] ** 2)
     return float(values.median())
 
 
 def effective_voltage_per_mhz(df: pd.DataFrame, core: int | None = None) -> float:
-    """Median voltage required per effective MHz."""
+    """Compute the median voltage required per effective MHz.
 
-    subset = _subset_core(df, core).dropna(subset=["vid", "eff_clock"])
+    Args:
+        df: Telemetry dataframe containing ``vid`` and ``eff_clock``.
+        core: Optional core identifier to isolate before aggregation.
+
+    Returns:
+        The median ``vid / eff_clock`` ratio.
+
+    Assumptions:
+        ``eff_clock`` is non-zero for the rows contributing to the metric.
+    """
+
+    subset = subset_core(df, core).dropna(subset=["vid", "eff_clock"])
     return _median_ratio(subset, "vid", "eff_clock")
 
 
 def voltage_per_mhz_squared(df: pd.DataFrame, core: int | None = None) -> float:
-    """Median ``vid / clock^2`` metric for high-frequency voltage curvature checks."""
+    """Compute the median ``vid / clock^2`` curvature proxy.
 
-    subset = _subset_core(df, core).dropna(subset=["vid", "clock"])
+    Args:
+        df: Telemetry dataframe containing ``vid`` and ``clock``.
+        core: Optional core identifier to isolate before aggregation.
+
+    Returns:
+        The median curvature proxy.
+
+    Assumptions:
+        ``clock`` is non-zero for the rows contributing to the metric.
+    """
+
+    subset = subset_core(df, core).dropna(subset=["vid", "clock"])
     values = subset["vid"] / (subset["clock"] ** 2).replace(0, np.nan)
     return float(values.median())
 
@@ -64,7 +132,20 @@ def boost_ridge(
     bins: int = 30,
     power_min: float = 10.0,
 ) -> pd.DataFrame:
-    """Return per-core boost ridge lines (clock quantile over power bins)."""
+    """Return per-core boost ridge lines over power bins.
+
+    Args:
+        df: Telemetry dataframe containing ``core``, ``power``, and ``clock``.
+        quantile: Clock quantile extracted in each power bin.
+        bins: Number of equally spaced power edges per core.
+        power_min: Optional minimum power threshold before binning.
+
+    Returns:
+        A dataframe with ``core``, ``power_mid``, and ``clock_quantile``.
+
+    Assumptions:
+        The selected rows provide enough samples per core to support binning.
+    """
 
     return compute_power_clock_ridge(
         df,
@@ -75,14 +156,25 @@ def boost_ridge(
 
 
 def core_summary(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute per-core summary metrics used across analysis and reporting."""
+    """Compute the standard per-core summary metrics used in the notebook.
+
+    Args:
+        df: Telemetry dataframe containing per-core V/F measurements.
+
+    Returns:
+        A dataframe with one summary row per core.
+
+    Assumptions:
+        ``df`` contains the columns referenced by the summary metrics, and each
+        core has enough valid rows for meaningful medians.
+    """
 
     rows: list[dict[str, float | int]] = []
 
-    for core in sorted(df["core"].dropna().unique()):
+    for core in sorted_core_ids(df):
         core_df = df[df["core"] == core]
         median_temp = float("nan")
-        if "temp" in core_df:
+        if "temp" in core_df.columns:
             median_temp = float(core_df["temp"].median())
 
         rows.append(

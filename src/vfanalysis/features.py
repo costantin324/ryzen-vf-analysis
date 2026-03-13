@@ -7,18 +7,55 @@ import pandas as pd
 
 
 def _require_columns(df: pd.DataFrame, columns: list[str]) -> None:
+    """Validate that all required columns are present.
+
+    Args:
+        df: Input dataframe.
+        columns: Column names required by the transformation.
+
+    Returns:
+        None.
+
+    Assumptions:
+        ``df`` is a pandas dataframe with string column labels.
+    """
+
     missing = [column for column in columns if column not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
 
 def _safe_divide(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+    """Divide two series while treating zero denominators as missing.
+
+    Args:
+        numerator: Numeric numerator series.
+        denominator: Numeric denominator series.
+
+    Returns:
+        A float series with zero denominators replaced by ``NaN``.
+
+    Assumptions:
+        ``numerator`` and ``denominator`` are aligned pandas series.
+    """
+
     valid = denominator.replace(0, np.nan)
     return numerator / valid
 
 
 def add_frequency_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add frequency-derived row features."""
+    """Add frequency-derived row features.
+
+    Args:
+        df: Telemetry dataframe containing ``clock`` and ``eff_clock``.
+
+    Returns:
+        A copy of ``df`` with ``eff_ratio`` added.
+
+    Assumptions:
+        ``clock`` is expressed in MHz and ``eff_clock`` is aligned to the same
+        sampling interval.
+    """
 
     _require_columns(df, ["clock", "eff_clock"])
 
@@ -28,7 +65,17 @@ def add_frequency_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_voltage_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add voltage/frequency row features."""
+    """Add voltage/frequency row features.
+
+    Args:
+        df: Telemetry dataframe containing ``vid`` and ``clock``.
+
+    Returns:
+        A copy of ``df`` with voltage-per-frequency features added.
+
+    Assumptions:
+        ``vid`` is measured in volts and ``clock`` is measured in MHz.
+    """
 
     _require_columns(df, ["vid", "clock"])
 
@@ -39,7 +86,17 @@ def add_voltage_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_power_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add power efficiency row features."""
+    """Add power efficiency row features.
+
+    Args:
+        df: Telemetry dataframe containing ``clock`` and ``power``.
+
+    Returns:
+        A copy of ``df`` with clock-per-power helper columns added.
+
+    Assumptions:
+        ``power`` is expressed in watts and sampled per row.
+    """
 
     _require_columns(df, ["clock", "power"])
 
@@ -50,7 +107,18 @@ def add_power_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_efficiency_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add combined voltage/frequency/power row features."""
+    """Add combined voltage/frequency efficiency features.
+
+    Args:
+        df: Telemetry dataframe containing ``vid`` and ``eff_clock``.
+
+    Returns:
+        A copy of ``df`` with effective-voltage-per-MHz added.
+
+    Assumptions:
+        ``eff_clock`` represents the effective frequency for the same sample as
+        ``vid``.
+    """
 
     _require_columns(df, ["vid", "eff_clock"])
 
@@ -60,7 +128,17 @@ def add_efficiency_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_all_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Apply all deterministic row-wise feature transformations."""
+    """Apply all deterministic row-wise feature transformations.
+
+    Args:
+        df: Input telemetry dataframe.
+
+    Returns:
+        A copy of ``df`` with all standard derived features added.
+
+    Assumptions:
+        ``df`` satisfies the column requirements of every feature stage.
+    """
 
     out = add_frequency_features(df)
     out = add_voltage_features(out)
