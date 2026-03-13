@@ -9,20 +9,24 @@ description = "Reusable Ryzen 9700X V/F analysis package and notebook workflow."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "jupyterlab>=4.5.6",
     "matplotlib>=3.10.8",
     "numpy>=2.4.3",
     "pandas>=3.0.1",
     "polars>=1.38.1",
-    "pylint>=3.3.8",
     "pyarrow>=23.0.1",
-    "pyright>=1.1.408",
     "python-dotenv>=1.2.2",
-    "ruff>=0.15.5",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.1",
     "seaborn>=0.13.2",
     "statsmodels>=0.14.6",
+]
+
+[dependency-groups]
+dev = [
+    "jupyterlab>=4.5.6",
+    "pylint>=3.3.8",
+    "pyright>=1.1.408",
+    "ruff>=0.15.5",
 ]
 
 [tool.setuptools]
